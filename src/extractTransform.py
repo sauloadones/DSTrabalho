@@ -1,29 +1,57 @@
 import requests
 import pandas as pd
-from urllib.parse import quote
-
 
 def requestApi() -> pd.DataFrame:
 
-    url = (
-    "https://olinda.bcb.gov.br/olinda/servico/Saldos_BCB/versao/v1/odata/"
-    "Saldos_Mensais_BCB(Data_base=@Data_base,Data_fim=@Data_fim)"
+    url_usd = (
+        "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
+        "CotacaoDolarPeriodo(dataInicial='01-01-2023',dataFinalCotacao='12-31-2025')"
+        "?$top=10000&$format=json"
+    )
+    url_eur = (
+        "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
+        "CotacaoMoedaPeriodo(moeda='EUR',dataInicial='01-01-2023',dataFinalCotacao='12-31-2025')"
+        "?$top=10000&$format=json"
     )
 
-    params = {
-        "@Data_base": "'2024-01-01'",
-        "@Data_fim": "'2024-12-31'",
-        "$format": "json",
-        "$top": 100
-    }
+    
+    df_usd = pd.DataFrame(requests.get(url_usd).json()['value'])
+    df_eur = pd.DataFrame(requests.get(url_eur).json()['value'])
 
-    response = requests.get(url, params=params)
+  
+    df_usd['dataHoraCotacao'] = pd.to_datetime(df_usd['dataHoraCotacao']).dt.date
+    df_eur['dataHoraCotacao'] = pd.to_datetime(df_eur['dataHoraCotacao']).dt.date
 
+    
+    df_usd['tipoBoletim'] = 'Fechamento'
+    df_eur = df_eur[df_eur['tipoBoletim'] == 'Fechamento']
 
-    # === Verificação e tratamento dos dados ===
-    if response.status_code == 200:
-        dados = response.json()["value"]
-       
-        return pd.DataFrame(dados)
-    else:
-        print(f"Erro na requisição: {response.status_code}")
+    
+    df_usd = df_usd.rename(columns={
+        'cotacaoCompra': 'cotacaoCompra_USD',
+        'cotacaoVenda': 'cotacaoVenda_USD'
+    })
+    df_eur = df_eur.rename(columns={
+        'cotacaoCompra': 'cotacaoCompra_EUR',
+        'cotacaoVenda': 'cotacaoVenda_EUR',
+        'paridadeCompra': 'paridadeCompra_USDEUR',
+        'paridadeVenda': 'paridadeVenda_USDEUR'
+    })
+
+   
+    df_merged = pd.merge(
+        df_usd,
+        df_eur,
+        on=['dataHoraCotacao', 'tipoBoletim'],
+        how='inner'
+    )
+
+   
+    df = df_merged[[
+        'dataHoraCotacao', 'tipoBoletim',
+        'cotacaoCompra_USD', 'cotacaoVenda_USD',
+        'cotacaoCompra_EUR', 'cotacaoVenda_EUR',
+        'paridadeCompra_USDEUR', 'paridadeVenda_USDEUR'
+    ]]
+
+    return df
