@@ -3,6 +3,6 @@ from src.extractTransform import requestApi
 
 from src.load import salvarCsv
 
-dadosBcb = requestApi()
+dadosCotacao = requestApi()
 
-salvarCsv(dadosBcb, "src/datasets/saldosMensais.csv", ";",".")
+salvarCsv(dadosCotacao, "src/datasets/dolar.csv", ";",".")

@@ -18,10 +18,11 @@ def requestApi() -> pd.DataFrame:
     df_usd = pd.DataFrame(requests.get(url_usd).json()['value'])
     df_eur = pd.DataFrame(requests.get(url_eur).json()['value'])
 
-
+    
 
     
     df_usd['tipoBoletim'] = 'Fechamento'
+    df_eur = df_eur[df_eur['tipoBoletim'] == 'Fechamento']
 
     
     df_usd = df_usd.rename(columns={
